@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Filtro selectivo: Azul y Amarillo</title>
+<style>
+  :root{
+    --bg:#0f172a; --panel:#111827; --muted:#1f2937; --text:#e5e7eb; --sub:#9ca3af; --acc:#f59e0b;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial,sans-serif;
+    background:linear-gradient(120deg,#0b1022,#111827 60%,#0b1022);
+    color:var(--text);
+  }
+  header{padding:24px; text-align:center}
+  header h1{margin:0 0 6px; font-size:clamp(20px,3vw,28px)}
+  header p{margin:0; color:var(--sub)}
+  .wrap{
+    max-width:1100px; margin:24px auto; padding:16px;
+    display:grid; gap:16px; grid-template-columns: 1fr;
+  }
+  .card{
+    background:rgba(255,255,255,0.04);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:16px; padding:16px;
+    backdrop-filter: blur(6px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+  }
+  .uploader{
+    border:2px dashed rgba(255,255,255,0.15); border-radius:14px; padding:18px;
+    display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap;
+  }
+  .uploader input{display:none}
+  .btn, label[for=file]{
+    background:linear-gradient(180deg,#1f2937,#111827);
+    border:1px solid rgba(255,255,255,0.12);
+    color:var(--text); padding:10px 14px; border-radius:12px;
+    cursor:pointer; transition:.15s transform ease, .15s opacity ease;
+    display:inline-flex; gap:8px; align-items:center; text-decoration:none; user-select:none;
+  }
+  .btn:hover, label[for=file]:hover{transform:translateY(-1px)}
+  .btn:active, label[for=file]:active{transform:translateY(0)}
+  .controls{
+    display:grid; gap:10px; grid-template-columns: repeat(auto-fit,minmax(230px,1fr));
+  }
+  .control{
+    background:var(--panel); border:1px solid rgba(255,255,255,0.08);
+    border-radius:12px; padding:12px;
+  }
+  .control h3{margin:0 0 8px; font-size:14px; color:#d1d5db}
+  .row{display:flex; align-items:center; gap:10px; margin:6px 0}
+  .row input[type=range]{flex:1}
+  .hint{font-size:12px; color:var(--sub)}
+  .canvas-row{display:grid; gap:16px; grid-template-columns: 1fr}
+  .canv-wrap{background:#0b1022; border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:12px; overflow:auto}
+  canvas{max-width:100%; height:auto; display:block; margin:auto; background:#000}
+  .actions{display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; margin-top:8px}
+  .pill{font-size:12px; color:#cbd5e1; background:#172554; padding:3px 8px; border-radius:999px; border:1px solid rgba(255,255,255,0.08)}
+  footer{padding:18px; text-align:center; color:#94a3b8; font-size:12px}
+  @media(min-width:1000px){
+    .wrap{grid-template-columns: 360px 1fr}
+    .canvas-row{grid-column: 1 / -1}
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Color selectivo: 💙 Azul + 💛 Amarillo</h1>
+  <p>Subí una imagen. Conservamos azules y amarillos; lo demás se vuelve gris. Ajustá tolerancias si hace falta.</p>
+</header>
+
+<div class="wrap">
+  <section class="card">
+    <div class="uploader">
+      <div>
+        <div class="pill">Acepta JPG, PNG, WEBP</div>
+        <div class="hint" style="margin-top:6px">Arrastrá y soltá una imagen aquí o usá el botón “Elegir imagen”.</div>
+      </div>
+      <div>
+        <input id="file" type="file" accept="image/*" />
+        <label for="file" title="Elegir imagen">
+          📷 Elegir imagen
+        </label>
+      </div>
+    </div>
+
+    <div style="margin-top:12px" class="controls">
+      <div class="control">
+        <h3>Rango Amarillo (° de matiz)</h3>
+        <div class="row">
+          <span class="hint">Centro</span>
+          <input id="yCenter" type="range" min="0" max="360" value="55">
+          <output id="yCenterOut" class="hint">55°</output>
+        </div>
+        <div class="row">
+          <span class="hint">Tolerancia</span>
+          <input id="yTol" type="range" min="1" max="60" value="20">
+          <output id="yTolOut" class="hint">±20°</output>
+        </div>
+      </div>
+
+      <div class="control">
+        <h3>Rango Azul (° de matiz)</h3>
+        <div class="row">
+          <span class="hint">Centro</span>
+          <input id="bCenter" type="range" min="0" max="360" value="220">
+          <output id="bCenterOut" class="hint">220°</output>
+        </div>
+        <div class="row">
+          <span class="hint">Tolerancia</span>
+          <input id="bTol" type="range" min="1" max="60" value="25">
+          <output id="bTolOut" class="hint">±25°</output>
+        </div>
+      </div>
+
+      <div class="control">
+        <h3>Umbrales de pureza</h3>
+        <div class="row">
+          <span class="hint">Saturación mínima</span>
+          <input id="sMin" type="range" min="0" max="100" value="25">
+          <output id="sMinOut" class="hint">25%</output>
+        </div>
+        <div class="row">
+          <span class="hint">Luminosidad máx. para amarillo</span>
+          <input id="yLightMax" type="range" min="20" max="95" value="88">
+          <output id="yLightMaxOut" class="hint">88%</output>
+        </div>
+      </div>
+
+      <div class="control">
+        <h3>Salida</h3>
+        <div class="row">
+          <button class="btn" id="downloadBtn" disabled>⬇️ Descargar PNG</button>
+          <button class="btn" id="resetBtn" disabled>↺ Restablecer ajustes</button>
+        </div>
+        <div class="hint">Tip: subí imágenes con buena iluminación para mejores resultados.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card canvases">
+    <div class="canvas-row">
+      <div class="canv-wrap">
+        <div class="hint" style="margin:0 0 8px">Original</div>
+        <canvas id="orig"></canvas>
+      </div>
+      <div class="canv-wrap">
+        <div class="hint" style="margin:0 0 8px">Procesada (azul + amarillo)</div>
+        <canvas id="out"></canvas>
+      </div>
+    </div>
+    <div class="actions">
+      <span class="pill">Procesamiento en navegador · sin subir datos</span>
+    </div>
+  </section>
+</div>
+
+<footer>Hecho con ♥ para resaltar los colores de tu equipo 😉</footer>
+
+<script>
+  const fileInput = document.getElementById('file');
+  const orig = document.getElementById('orig');
+  const out = document.getElementById('out');
+  const ctxOrig = orig.getContext('2d');
+  const ctxOut = out.getContext('2d');
+
+  const yCenter = document.getElementById('yCenter');
+  const yTol = document.getElementById('yTol');
+  const bCenter = document.getElementById('bCenter');
+  const bTol = document.getElementById('bTol');
+  const sMin = document.getElementById('sMin');
+  const yLightMax = document.getElementById('yLightMax');
+
+  const yCenterOut = document.getElementById('yCenterOut');
+  const yTolOut = document.getElementById('yTolOut');
+  const bCenterOut = document.getElementById('bCenterOut');
+  const bTolOut = document.getElementById('bTolOut');
+  const sMinOut = document.getElementById('sMinOut');
+  const yLightMaxOut = document.getElementById('yLightMaxOut');
+
+  const downloadBtn = document.getElementById('downloadBtn');
+  const resetBtn = document.getElementById('resetBtn');
+
+  let imgBitmap = null;
+  const defaults = {
+    yCenter: 55, yTol: 20,
+    bCenter: 220, bTol: 25,
+    sMin: 25, yLightMax: 88
+  };
+
+  // Drag & drop
+  const uploader = document.querySelector('.uploader');
+  ;['dragenter','dragover'].forEach(ev => uploader.addEventListener(ev, e => {
+    e.preventDefault(); e.stopPropagation();
+    uploader.style.borderColor = 'rgba(245,158,11,0.8)';
+  }));
+  ;['dragleave','drop'].forEach(ev => uploader.addEventListener(ev, e => {
+    e.preventDefault(); e.stopPropagation();
+    uploader.style.borderColor = 'rgba(255,255,255,0.15)';
+  }));
+  uploader.addEventListener('drop', e => {
+    const f = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f && f.type.startsWith('image/')) loadFile(f);
+  });
+
+  fileInput.addEventListener('change', e => {
+    const f = e.target.files[0];
+    if (f) loadFile(f);
+  });
+
+  function loadFile(file){
+    const reader = new FileReader();
+    reader.onload = async e => {
+      const url = e.target.result;
+      imgBitmap = await createImageBitmap(await (await fetch(url)).blob());
+      fitAndDraw();
+      process();
+      downloadBtn.disabled = false;
+      resetBtn.disabled = false;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function fitAndDraw(){
+    if(!imgBitmap) return;
+    const maxW = 1600, maxH = 1200;
+    let {width:w,height:h} = imgBitmap;
+    const scale = Math.min(1, maxW/w, maxH/h);
+    w = Math.round(w*scale); h = Math.round(h*scale);
+    orig.width = out.width = w;
+    orig.height = out.height = h;
+    ctxOrig.drawImage(imgBitmap,0,0,w,h);
+  }
+
+  // RGB -> HSL (h in 0..360, s/l in 0..1)
+  function rgbToHsl(r, g, b){
+    r/=255; g/=255; b/=255;
+    const max = Math.max(r,g,b), min = Math.min(r,g,b);
+    let h, s, l = (max+min)/2;
+    if (max===min){ h = 0; s = 0; }
+    else{
+      const d = max-min;
+      s = l>0.5 ? d/(2-max-min) : d/(max+min);
+      switch(max){
+        case r: h = (g-b)/d + (g<b?6:0); break;
+        case g: h = (b-r)/d + 2; break;
+        case b: h = (r-g)/d + 4; break;
+      }
+      h *= 60;
+    }
+    return [h, s, l];
+  }
+
+  function hueInRange(h, center, tol){
+    // distancia circular en 0..360
+    let d = Math.abs(h - center);
+    d = Math.min(d, 360 - d);
+    return d <= tol;
+  }
+
+  function process(){
+    if(!imgBitmap) return;
+    // mostrar valores
+    yCenterOut.textContent = `${yCenter.value}°`;
+    yTolOut.textContent = `±${yTol.value}°`;
+    bCenterOut.textContent = `${bCenter.value}°`;
+    bTolOut.textContent = `±${bTol.value}°`;
+    sMinOut.textContent = `${sMin.value}%`;
+    yLightMaxOut.textContent = `${yLightMax.value}%`;
+
+    // tomar pixels
+    const {width:w,height:h} = out;
+    const src = ctxOrig.getImageData(0,0,w,h);
+    const dst = ctxOut.createImageData(w,h);
+    const data = src.data, outData = dst.data;
+
+    const yC = +yCenter.value, yT = +yTol.value;
+    const bC = +bCenter.value, bT = +bTol.value;
+    const sThresh = (+sMin.value)/100;
+    const yLMax = (+yLightMax.value)/100;
+
+    for (let i=0; i<data.length; i+=4){
+      const r = data[i], g = data[i+1], b = data[i+2], a = data[i+3];
+      const [hue, s, l] = rgbToHsl(r,g,b);
+
+      // ¿es amarillo o azul suficientemente saturado?
+      const isYellow = (s >= sThresh) && (l <= yLMax) && hueInRange(hue, yC, yT);
+      const isBlue   = (s >= sThresh) && hueInRange(hue, bC, bT);
+
+      if (isYellow || isBlue){
+        // mantener color original
+        outData[i] = r; outData[i+1] = g; outData[i+2] = b; outData[i+3] = a;
+      } else {
+        // convertir a gris (luma perceptual)
+        const y = Math.round(0.2126*r + 0.7152*g + 0.0722*b);
+        outData[i] = outData[i+1] = outData[i+2] = y; outData[i+3] = a;
+      }
+    }
+    ctxOut.putImageData(dst,0,0);
+  }
+
+  // listeners de controles
+  [yCenter,yTol,bCenter,bTol,sMin,yLightMax].forEach(el => el.addEventListener('input', process));
+
+  // Descargar
+  downloadBtn.addEventListener('click', () => {
+    const link = document.createElement('a');
+    link.download = 'selectivo-azul-amarillo.png';
+    link.href = out.toDataURL('image/png');
+    link.click();
+  });
+
+  // Reset
+  resetBtn.addEventListener('click', () => {
+    yCenter.value = defaults.yCenter;
+    yTol.value = defaults.yTol;
+    bCenter.value = defaults.bCenter;
+    bTol.value = defaults.bTol;
+    sMin.value = defaults.sMin;
+    yLightMax.value = defaults.yLightMax;
+    process();
+  });
+
+  // Recalcular si cambia el tamaño de la ventana (por si redibuja)
+  window.addEventListener('resize', () => {
+    if (!imgBitmap) return;
+    fitAndDraw();
+    process();
+  });
+</script>
+</body>
+</html>
