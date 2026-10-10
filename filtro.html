@@ -47,6 +47,10 @@
     .preset { flex:1; color:var(--muted); background:#192641; border:1px solid var(--line); border-radius:7px; padding:8px 4px; font-size:11px; }
     .preset[aria-pressed="true"] { border-color:var(--yellow); color:var(--yellow); background:#ffdc4510; }
     .setting { margin-top:16px; }
+    .skin-option { margin-top:20px; padding:14px 12px; border:1px solid var(--line); border-radius:9px; background:#192641; }
+    .skin-option label { display:flex; gap:9px; align-items:center; font-size:12px; cursor:pointer; }
+    .skin-option input { accent-color:var(--yellow); width:17px; height:17px; margin:0; }
+    .skin-option p { margin:8px 0 0; color:var(--muted); font-size:10px; line-height:1.6; }
     .setting-head { display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:12px; margin-bottom:8px; }
     .setting-head label { color:#dce3f4; }
     .setting-head output { color:var(--muted); font:11px ui-monospace,SFMono-Regular,Consolas,monospace; white-space:nowrap; }
@@ -127,6 +131,7 @@
             <div class="setting"><div class="setting-head"><label for="yTol"><span class="swatch yellow" aria-hidden="true"></span>Amarillo · tolerancia</label><output for="yTol" id="yTolOut">±20°</output></div><input id="yTol" type="range" min="1" max="60" value="20"></div>
             <div class="setting"><div class="setting-head"><label for="bTol"><span class="swatch blue" aria-hidden="true"></span>Azul · tolerancia</label><output for="bTol" id="bTolOut">±25°</output></div><input class="blue-range" id="bTol" type="range" min="1" max="60" value="25"></div>
             <div class="setting"><div class="setting-head"><label for="sMin">Saturación mínima</label><output for="sMin" id="sMinOut">25%</output></div><input id="sMin" type="range" min="0" max="100" value="25"></div>
+            <div class="skin-option"><label><input id="preserveSkin" type="checkbox" aria-describedby="skinHelp skinStatus">Conservar el tono de piel</label><p id="skinHelp">Protegé la piel de la cara y el cuerpo. Funciona mejor con personas cercanas y bien iluminadas.</p><p id="skinStatus" role="status" aria-live="polite">Al activar, se descarga el detector. Tu foto sigue en tu dispositivo.</p></div>
             <details><summary>Ajustes finos</summary>
               <div class="setting"><div class="setting-head"><label for="yCenter">Centro del amarillo</label><output for="yCenter" id="yCenterOut">55°</output></div><input id="yCenter" type="range" min="0" max="360" value="55"></div>
               <div class="setting"><div class="setting-head"><label for="bCenter">Centro del azul</label><output for="bCenter" id="bCenterOut">220°</output></div><input class="blue-range" id="bCenter" type="range" min="0" max="360" value="220"></div>
@@ -165,6 +170,7 @@
   const originalCtx = original.getContext('2d', { willReadFrequently:true });
   const processedCtx = processed.getContext('2d');
   let bitmap = null, preview = null, cache = null, output = null;
+  let skinMask=null, skinLoading=false, skinJob=0;
   let renderFrame = 0, loadVersion = 0, exporting = false, loading = false, downloadName = 'boca-en-foco';
 
   // Shared color functions also run inside the export worker.
@@ -180,20 +186,26 @@
   function keepColor(h,s,l,p) {
     return s>=p.sMin/100 && (hueInRange(h,p.bCenter,p.bTol) || (l<=p.yLightMax/100 && hueInRange(h,p.yCenter,p.yTol)));
   }
-  function filterPixels(data,p,start=0,end=data.length) {
+  function skinAt(pixel,width,height,mask) {
+    if(!mask) return false;
+    const x=Math.min(mask.width-1,Math.floor((pixel%width)*mask.width/width));
+    const y=Math.min(mask.height-1,Math.floor(Math.floor(pixel/width)*mask.height/height));
+    return mask.data[y*mask.width+x]===1;
+  }
+  function filterPixels(data,p,start=0,end=data.length,mask=null,width=0,height=0) {
     for (let i=start;i<end;i+=4) {
       const r=data[i],g=data[i+1],b=data[i+2], [h,s,l]=rgbToHsl(r,g,b);
-      if (!keepColor(h,s,l,p)) data[i]=data[i+1]=data[i+2]=Math.round(.2126*r+.7152*g+.0722*b);
+      if (!keepColor(h,s,l,p) && !(p.preserveSkin&&skinAt(i/4,width,height,mask))) data[i]=data[i+1]=data[i+2]=Math.round(.2126*r+.7152*g+.0722*b);
     }
   }
-  function parameters() { return Object.fromEntries(controls.map(id=>[id,Number($(id).value)])); }
+  function parameters() { return {...Object.fromEntries(controls.map(id=>[id,Number($(id).value)])),preserveSkin:$('preserveSkin').checked}; }
   function status(message,error=false) { $('status').textContent=message; $('status').classList.toggle('error',error); }
   function refreshControls() {
     for (const id of controls) $(id+'Out').textContent=(id.endsWith('Tol')?'±':'')+$(id).value+(id==='sMin'||id==='yLightMax'?'%':'°');
   }
   function setBusy() {
     $('settings').disabled=loading||exporting||!bitmap;
-    $('downloadBtn').disabled=loading||exporting||!bitmap;
+    $('downloadBtn').disabled=loading||exporting||skinLoading||!bitmap;
     $('uploadBtn').disabled=exporting;
     $('demoBtn').disabled=exporting;
     $('compare').disabled=!bitmap;
@@ -212,7 +224,7 @@
     if(!preview) return;
     const p=parameters(), source=preview.data, dest=output.data, {hsl,gray}=cache;
     for(let pixel=0,i=0;pixel<gray.length;pixel++,i+=4) {
-      if(keepColor(hsl[pixel*3],hsl[pixel*3+1],hsl[pixel*3+2],p)) { dest[i]=source[i];dest[i+1]=source[i+1];dest[i+2]=source[i+2]; }
+      if(keepColor(hsl[pixel*3],hsl[pixel*3+1],hsl[pixel*3+2],p)||(p.preserveSkin&&skinAt(pixel,original.width,original.height,skinMask))) { dest[i]=source[i];dest[i+1]=source[i+1];dest[i+2]=source[i+2]; }
       else dest[i]=dest[i+1]=dest[i+2]=gray[pixel];
       dest[i+3]=source[i+3];
     }
@@ -231,6 +243,8 @@
     $('compare').setAttribute('aria-valuetext',value+'% filtrada, '+(100-value)+'% original');
   }
   function installImage(next,name,isDemo=false) {
+    ++skinJob;skinMask=null;skinLoading=false;
+    $('skinStatus').textContent='Al activar, se descarga el detector. Tu foto sigue en tu dispositivo.';
     const scale=Math.min(1,1600/next.width,1200/next.height,Math.sqrt(1300000/(next.width*next.height)));
     const w=Math.max(1,Math.round(next.width*scale)), h=Math.max(1,Math.round(next.height*scale));
     // Allocate the preview before releasing the current valid image.
@@ -265,7 +279,7 @@
     } catch(error) {
       if(next) next.close();
       if(version===loadVersion) status(error.message.startsWith('La foto supera')?error.message:'No pudimos abrir esa imagen. Probá otro archivo JPG, PNG o WEBP.',true);
-    } finally { if(version===loadVersion) {loading=false;setBusy();$('file').value='';} }
+    } finally { if(version===loadVersion) {loading=false;setBusy();$('file').value='';if($('preserveSkin').checked)detectSkin();} }
   }
   async function loadDemo() {
     if(exporting) return;
@@ -279,23 +293,43 @@
       installImage(next,'la-bombonera.png',true);next=null;
     }
     catch(error){if(next)next.close();if(version===loadVersion)status('No pudimos cargar el ejemplo. Elegí una foto para empezar.',true);}
-    finally{if(version===loadVersion){loading=false;setBusy();}}
+    finally{if(version===loadVersion){loading=false;setBusy();if($('preserveSkin').checked)detectSkin();}}
+  }
+  async function detectSkin() {
+    const job=++skinJob,version=loadVersion;
+    if(!$('preserveSkin').checked||!bitmap) {skinLoading=false;$('skinStatus').textContent='Protección desactivada. Activala para conservar la piel.';setBusy();schedulePreview();return;}
+    if(skinMask) {skinLoading=false;$('skinStatus').textContent=skinMask.data.some(value=>value===1)?'Piel detectada. Su color se conserva también al descargar.':'No se detectó piel. Probá una foto con la persona más cerca.';setBusy();schedulePreview();return;}
+    skinLoading=true;setBusy();$('skinStatus').textContent='Preparando detector y buscando piel…';
+    try {
+      const {detectSkinMask}=await import('./skin-detector.mjs');
+      const mask=await detectSkinMask(original,()=>job===skinJob&&version===loadVersion);
+      if(job!==skinJob||version!==loadVersion) return;
+      skinMask=mask;
+      const found=mask.data.some(value=>value===1);
+      $('skinStatus').textContent=found?'Piel detectada. Su color se conserva también al descargar.':'No se detectó piel. Probá una foto con la persona más cerca.';
+      schedulePreview();
+    }catch(error){
+      if(job!==skinJob||version!==loadVersion) return;
+      $('preserveSkin').checked=false;
+      $('skinStatus').textContent='No pudimos cargar el detector. Revisá tu conexión y volvé a activar la opción.';
+      schedulePreview();
+    }finally{if(job===skinJob&&version===loadVersion){skinLoading=false;setBusy();}}
   }
   function exportWorker() {
     self.onmessage=async event=>{
-      const {image,p}=event.data;
+      const {image,p,mask}=event.data;
       try {
         const canvas=new OffscreenCanvas(image.width,image.height),ctx=canvas.getContext('2d',{willReadFrequently:true});
         ctx.drawImage(image,0,0);image.close();
         const frame=ctx.getImageData(0,0,canvas.width,canvas.height),rowBytes=canvas.width*4;
-        for(let row=0;row<canvas.height;row+=64){filterPixels(frame.data,p,row*rowBytes,Math.min((row+64)*rowBytes,frame.data.length));self.postMessage({progress:Math.min(95,Math.round((row+64)/canvas.height*95))});}
+        for(let row=0;row<canvas.height;row+=64){filterPixels(frame.data,p,row*rowBytes,Math.min((row+64)*rowBytes,frame.data.length),mask,canvas.width,canvas.height);self.postMessage({progress:Math.min(95,Math.round((row+64)/canvas.height*95))});}
         ctx.putImageData(frame,0,0);const blob=await canvas.convertToBlob({type:'image/png'});
         canvas.width=canvas.height=1;self.postMessage({blob});
       }catch(error){image.close();self.postMessage({error:error.message});}
     };
   }
   async function workerPng(p) {
-    const code=[rgbToHsl,hueInRange,keepColor,filterPixels].map(fn=>fn.toString()).join('\n')+'\n('+exportWorker.toString()+')();';
+    const code=[rgbToHsl,hueInRange,keepColor,skinAt,filterPixels].map(fn=>fn.toString()).join('\n')+'\n('+exportWorker.toString()+')();';
     const url=URL.createObjectURL(new Blob([code],{type:'text/javascript'}));
     let worker,image;
     try {
@@ -303,7 +337,7 @@
       return await new Promise((resolve,reject)=>{
         worker.onmessage=({data})=>{if(data.blob)resolve(data.blob);else if(data.error)reject(new Error(data.error));else if(data.progress!==undefined){$('downloadText').textContent=data.progress+'%';status('Preparando PNG en resolución original… '+data.progress+'%');}};
         worker.onerror=()=>reject(new Error('Exportación paralela no disponible'));
-        worker.postMessage({image,p},[image]);image=null;
+        worker.postMessage({image,p,mask:p.preserveSkin?skinMask:null},[image]);image=null;
       });
     }finally{if(image)image.close();if(worker)worker.terminate();URL.revokeObjectURL(url);}
   }
@@ -312,13 +346,13 @@
     try{
       const ctx=canvas.getContext('2d',{willReadFrequently:true});ctx.drawImage(bitmap,0,0);
       const frame=ctx.getImageData(0,0,canvas.width,canvas.height),rowBytes=canvas.width*4;
-      for(let row=0;row<canvas.height;row+=16){filterPixels(frame.data,p,row*rowBytes,Math.min((row+16)*rowBytes,frame.data.length));if(row%128===0){const pct=Math.min(95,Math.round(row/canvas.height*95));$('downloadText').textContent=pct+'%';await new Promise(resolve=>setTimeout(resolve,0));}}
+      for(let row=0;row<canvas.height;row+=16){filterPixels(frame.data,p,row*rowBytes,Math.min((row+16)*rowBytes,frame.data.length),p.preserveSkin?skinMask:null,canvas.width,canvas.height);if(row%128===0){const pct=Math.min(95,Math.round(row/canvas.height*95));$('downloadText').textContent=pct+'%';await new Promise(resolve=>setTimeout(resolve,0));}}
       ctx.putImageData(frame,0,0);
       return await new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('No se pudo generar PNG')),'image/png'));
     }finally{canvas.width=canvas.height=1;}
   }
   async function download() {
-    if(!bitmap||loading||exporting)return;
+    if(!bitmap||loading||exporting||skinLoading)return;
     exporting=true;setBusy();$('downloadText').textContent='Preparando…';status('Preparando PNG en resolución original…');
     // Let the busy state paint before an older browser's fallback starts processing.
     await new Promise(resolve=>requestAnimationFrame(resolve));
@@ -335,6 +369,7 @@
   $('file').addEventListener('change',event=>loadFile(event.target.files[0]));
   $('demoBtn').addEventListener('click',loadDemo);
   $('downloadBtn').addEventListener('click',download);
+  $('preserveSkin').addEventListener('change',detectSkin);
   $('resetBtn').addEventListener('click',()=>applyPreset('classic'));
   $('compare').addEventListener('input',updateComparison);
   controls.forEach(id=>$(id).addEventListener('input',()=>{document.querySelectorAll('[data-preset]').forEach(button=>button.setAttribute('aria-pressed','false'));schedulePreview();}));
