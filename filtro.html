@@ -9,32 +9,37 @@
   <style>
     :root { color-scheme: dark; --bg:#0c142b; --panel:#131f3d; --line:#2c3854; --text:#f7f8fc; --muted:#a4b0c9; --yellow:#ffdc45; --blue:#2362ee; }
     * { box-sizing:border-box; }
-    body { margin:0; background:var(--bg); color:var(--text); font-family:Inter,Arial,Helvetica,sans-serif; }
+    body { margin:0; background:radial-gradient(ellipse at 85% 0,#173c762e,transparent 48%),var(--bg); color:var(--text); font-family:Inter,Arial,Helvetica,sans-serif; }
+    body::before { content:""; display:block; height:4px; background:linear-gradient(90deg,#2362ee 0 34%,var(--yellow) 34% 66%,#2362ee 66%); }
     button,input { font:inherit; }
     button { cursor:pointer; }
     button:disabled { opacity:.45; cursor:wait; }
     button:focus-visible,input:focus-visible,a:focus-visible,summary:focus-visible { outline:3px solid var(--yellow); outline-offset:5px; }
     .shell { max-width:1440px; padding:0 48px; margin:auto; }
-    .topbar { display:flex; align-items:center; justify-content:space-between; padding:25px 0; border-bottom:1px solid var(--line); gap:20px; }
-    .brand { display:flex; align-items:center; gap:12px; color:var(--text); text-decoration:none; font-weight:850; letter-spacing:-.6px; font-size:20px; }
-    .brand-logo { width:64px; height:64px; border-radius:50%; object-fit:contain; flex-shrink:0; box-shadow:0 0 24px #2362ee30; }
+    .topbar { display:flex; align-items:center; justify-content:space-between; padding:22px 0; border-bottom:1px solid var(--line); gap:20px; }
+    .brand { display:flex; align-items:center; gap:20px; color:var(--text); text-decoration:none; font-weight:850; letter-spacing:-.6px; font-size:27px; }
+    .brand-logo { width:120px; height:120px; border-radius:50%; object-fit:contain; flex-shrink:0; box-shadow:0 0 0 6px #ffdc4507,0 8px 36px #2362ee35; }
     .brand-name { display:block; }
-    .filial-name { display:block; margin-top:5px; color:var(--muted); font-size:10px; font-weight:500; letter-spacing:1.2px; text-transform:uppercase; }
+    .filial-name { display:block; margin-top:9px; color:#d3dcf0; font-size:11px; font-weight:500; letter-spacing:1.4px; text-transform:uppercase; }
     .brand em { color:var(--yellow); font-style:normal; }
-    .privacy { color:var(--muted); font-size:12px; display:flex; align-items:center; gap:9px; }
+    .privacy { color:var(--muted); font-size:11px; display:flex; align-items:center; gap:9px; padding:11px 14px; border:1px solid var(--line); border-radius:30px; background:#131f3d88; }
     .privacy-dot { width:6px; height:6px; border-radius:50%; background:#88d8b3; box-shadow:0 0 0 4px #88d8b310; }
-    .hero { padding:38px 0 30px; display:flex; justify-content:space-between; align-items:flex-end; gap:30px; position:relative; }
+    .hero { padding:38px 0 34px; display:flex; justify-content:space-between; align-items:flex-end; gap:30px; position:relative; isolation:isolate; }
+    .hero::before { content:""; position:absolute; z-index:-1; inset:0 0 0 48%; background:linear-gradient(90deg,var(--bg),#0c142be8 55%,#0c142bd6),url('./assets/boca-tribuna.png') center/cover; opacity:.7; mask-image:linear-gradient(0deg,transparent,#000 35%,#000 70%,transparent); }
+    .hero-features { display:flex; flex-wrap:wrap; gap:8px; margin:20px 0 0; padding:0; list-style:none; }
+    .hero-features li { border:1px solid #ffdc4526; background:#ffdc4508; color:#d3dcf0; padding:7px 10px; border-radius:6px; font-size:10px; }
     .eyebrow { color:var(--yellow); text-transform:uppercase; font-weight:700; font-size:11px; letter-spacing:2.6px; display:flex; align-items:center; gap:12px; margin:0 0 13px; }
     .eyebrow::before { content:""; width:24px; height:2px; background:var(--yellow); }
     h1 { font-size:clamp(38px,4.6vw,68px); line-height:1.04; letter-spacing:-3px; margin:0; font-weight:850; }
     h1 span { color:var(--yellow); }
     .hero-description { max-width:330px; margin:0 0 5px; color:var(--muted); font-size:14px; line-height:1.7; }
     .hero-description strong { color:var(--text); font-weight:500; }
-    .workspace { display:grid; grid-template-columns:285px minmax(0,1fr); border:1px solid var(--line); border-radius:20px; overflow:hidden; background:var(--panel); box-shadow:0 24px 80px #0002; }
-    .sidebar { padding:24px; border-right:1px solid var(--line); min-width:0; }
+    .workspace { display:grid; grid-template-columns:285px minmax(0,1fr); border:1px solid #3b4b6a; border-radius:20px; overflow:hidden; background:linear-gradient(135deg,#182647,var(--panel) 65%); box-shadow:0 24px 80px #0003; }
+    .sidebar { padding:24px; border-right:1px solid var(--line); min-width:0; background:#0c142b30; }
     .step { color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:1.6px; display:flex; align-items:center; gap:8px; margin:0 0 16px; }
     .step b { color:var(--yellow); font-size:11px; font-variant-numeric:tabular-nums; }
-    .upload { border:1px dashed #53627e; border-radius:12px; padding:18px 14px; text-align:center; background:#192641; transition:background .15s,border-color .15s; }
+    .upload { border:1px dashed #6a7b9e; border-radius:12px; padding:18px 14px; text-align:center; background:linear-gradient(135deg,#24365b,#192641); transition:background .15s,border-color .15s; }
+    .upload:hover { border-color:var(--yellow); }
     .upload.dragover { border-color:var(--yellow); background:#273552; }
     .upload-icon { color:var(--yellow); margin:0 auto 10px; width:30px; height:30px; display:block; }
     .upload-btn { background:none; border:0; padding:0; color:var(--text); font-size:13px; font-weight:700; cursor:pointer; width:100%; }
@@ -68,8 +73,9 @@
     .stage-title span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .stage-title svg { flex-shrink:0; color:var(--muted); }
     .tag { padding:5px 8px; border:1px solid var(--line); border-radius:6px; color:var(--muted); font:10px ui-monospace,Consolas,monospace; white-space:nowrap; }
-    .viewer { position:relative; height:clamp(260px,52vh,560px); flex-shrink:0; background:repeating-conic-gradient(#15203a 0 25%,#1a2641 0 50%) 0/16px 16px; border:1px solid var(--line); border-radius:12px; overflow:hidden; margin:auto 0; }
+    .viewer { position:relative; aspect-ratio:var(--image-ratio,14 / 9); max-height:clamp(260px,52vh,560px); flex-shrink:0; background:repeating-conic-gradient(#15203a 0 25%,#1a2641 0 50%) 0/16px 16px; border:1px solid var(--line); border-radius:12px; overflow:hidden; margin:auto 0; }
     .viewer canvas { display:block; width:100%; height:100%; object-fit:contain; }
+    #original { position:absolute; inset:0; }
     #processed { position:absolute; inset:0; clip-path:inset(0 50% 0 0); }
     .image-label { position:absolute; top:14px; color:#fff; background:#071027bd; border:1px solid #ffffff30; border-radius:5px; padding:6px 9px; font-size:9px; letter-spacing:1px; text-transform:uppercase; pointer-events:none; }
     .image-label.filtered { left:14px; color:var(--yellow); }
@@ -95,20 +101,20 @@
     @media (min-width:1500px) { .stage { padding:26px 32px; } }
     @media (max-width:1000px) { .shell { padding:0 28px; } .workspace { grid-template-columns:250px minmax(0,1fr); } .sidebar { padding:20px; } .stage { padding:20px; } h1 { letter-spacing:-2px; } .hero-description { max-width:260px; font-size:12px; } .stage-footer { flex-wrap:wrap; } }
     @media (max-width:740px) { .shell { padding:0 18px; } .topbar { padding:20px 0; } .brand { font-size:18px; } .privacy { font-size:10px; } .privacy .desktop { display:none; } .hero { display:block; padding:30px 0 24px; } h1 { font-size:44px; } .hero-description { max-width:100%; margin:18px 0 0; font-size:13px; } .workspace { display:flex; flex-direction:column; border-radius:15px; } .stage { order:0; padding:16px; } .sidebar { order:1; border-right:0; border-top:1px solid var(--line); padding:20px; } .stage-head { margin-bottom:12px; } .tag { font-size:9px; } .image-label { top:10px; font-size:8px; padding:5px 7px; } .image-label.filtered { left:10px; } .image-label.original { right:10px; } .stage-footer { gap:10px; } .download { padding:12px; font-size:11px; } .export-note { font-size:10px; } fieldset { margin-top:20px; } .upload { padding:16px; } .upload-icon { display:none; } .bottom { align-items:flex-start; font-size:9px; } .bottom>p { max-width:155px; text-align:right; line-height:1.7; } }
-    @media (max-width:740px) { .topbar { flex-wrap:wrap; gap:14px; } .brand-logo { width:56px; height:56px; } .privacy { width:100%; padding-left:4px; } }
+    @media (max-width:740px) { .topbar { flex-wrap:wrap; gap:18px; } .brand { gap:14px; } .brand-logo { width:88px; height:88px; } .filial-name { font-size:9px; letter-spacing:.8px; line-height:1.6; } .privacy { width:auto; padding:8px 11px; } .hero::before { inset:0; opacity:.45; } .hero-features { margin-top:16px; gap:6px; } .hero-features li { font-size:9px; padding:6px 8px; } }
     @media (prefers-reduced-motion:reduce) { *,*::before,*::after { transition:none !important; } }
   </style>
 </head>
 <body>
   <div class="shell">
     <header class="topbar">
-      <a class="brand" href="./filtro.html" aria-label="Boca en foco, filial V. Sarmiento · Haedo, inicio"><img class="brand-logo" src="./assets/filial-logo.png" width="64" height="64" alt="Escudo de la filial Boca Juniors V. Sarmiento · Haedo"><span><span class="brand-name">BOCA<span style="font-weight:400">EN</span><em>FOCO</em></span><span class="filial-name">Filial V. Sarmiento · Haedo</span></span></a>
+      <a class="brand" href="./filtro.html" aria-label="Boca en foco, filial V. Sarmiento · Haedo, inicio"><img class="brand-logo" src="./assets/filial-logo.png" width="120" height="120" alt="Escudo de la filial Boca Juniors V. Sarmiento · Haedo"><span><span class="brand-name">BOCA<span style="font-weight:400">EN</span><em>FOCO</em></span><span class="filial-name">Filial V. Sarmiento · Haedo</span></span></a>
       <div class="privacy"><span class="privacy-dot" aria-hidden="true"></span>Tu foto queda en tu dispositivo<span class="desktop"> · Siempre</span></div>
     </header>
     <main>
       <section class="hero" aria-labelledby="hero-title">
         <div><p class="eyebrow">Dos colores. Toda una pasión.</p><h1 id="hero-title">La foto cambia.<br><span>La pasión, no.</span></h1></div>
-        <p class="hero-description">Dejá el <strong>azul y amarillo</strong> en primer plano.<br>El resto, a gris. Subí una foto, ajustá el filtro y llevate una imagen que dice todo.</p>
+        <div><p class="hero-description">Dejá el <strong>azul y amarillo</strong> en primer plano.<br>El resto, a gris. Subí una foto, ajustá el filtro y llevate una imagen que dice todo.</p><ul class="hero-features" aria-label="Funciones del editor"><li>Azul y amarillo</li><li>Piel natural</li><li>PNG sin marca</li></ul></div>
       </section>
       <section class="workspace" aria-label="Editor de color selectivo">
         <aside class="sidebar">
@@ -256,6 +262,7 @@
     if(bitmap) bitmap.close();
     bitmap=next;preview=newPreview;cache=newCache;output=newOutput;
     original.width=processed.width=w;original.height=processed.height=h;
+    $('viewer').style.setProperty('--image-ratio',w+' / '+h);
     originalCtx.putImageData(preview,0,0);
     $('fileName').textContent=isDemo?'La Bombonera · imagen de ejemplo':name;
     $('fileName').title=name;
